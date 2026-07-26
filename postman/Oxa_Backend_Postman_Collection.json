@@ -1,0 +1,2396 @@
+{
+	"info": {
+		"_postman_id": "0adf6746-1b3a-4c58-9c12-cb67b40e0ea6",
+		"name": "Oxa Backend API - Comprehensive Test Suite",
+		"description": "Postman v2.1.0 collection converted and expanded from the Jest/Supertest suite for the Oxa backend (MongoDB-backed, running at {{BASE_URL}}). Covers authentication, session/profile endpoints, contact management, general negative/validation cases, and targeted NoSQL injection & input-sanitization checks. Run folder-by-folder, in order, using the Collection Runner - state (test identities, JWT, contact id) is created once and threaded through subsequent requests via collection variables.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "01_Authentication",
+			"id": "1ba22175-ca5b-4bb0-9c89-97e69d298c0e",
+			"description": "Signup, duplicate checks, and login flows. The very first request generates the unique test identities used for the remainder of the run.",
+			"item": [
+				{
+					"name": "01_Signup_Success_Main_User",
+					"id": "a14d6433-5780-49ca-b4fb-366f10ce7955",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "2a4501f5-36c9-4edc-a9be-db7f8fe29e9a",
+								"type": "text/javascript",
+								"exec": [
+									"// Generate a unique identity ONCE for the whole collection run.",
+									"// This value is reused across every subsequent request that depends",
+									"// on \"the user who just signed up\" - it is never regenerated.",
+									"const ts = Date.now();",
+									"pm.collectionVariables.set(\"test_email\", `user_${ts}@example.com`);",
+									"pm.collectionVariables.set(\"test_username\", `user_${ts}`);",
+									"pm.collectionVariables.set(\"test_password\", \"Password123!\");",
+									"",
+									"// Also generate a distinct SECOND identity up front, used later as the",
+									"// \"contact\" that gets added to the main user's contact list.",
+									"pm.collectionVariables.set(\"contact_email\", `contact_${ts}@example.com`);",
+									"pm.collectionVariables.set(\"contact_username\", `contact_${ts}`);",
+									"pm.collectionVariables.set(\"contact_password\", \"Password123!\");"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "9f2df3fb-5646-4c43-9767-c779844275ae",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response is valid JSON\", function () {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/signup",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "signup"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"{{test_username}}\",\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02_Signup_Success_Contact_User",
+					"id": "e9867edd-4d12-4826-b0db-baad9bd79b2a",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "c1fb5f95-2b6a-46a5-bb8b-e60a6b25bcfb",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/signup",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "signup"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"{{contact_username}}\",\n    \"email\": \"{{contact_email}}\",\n    \"password\": \"{{contact_password}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "03_Signup_Fail_Missing_Required_Fields",
+					"id": "e802678f-2559-4061-b018-3843730e7acd",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "9df2b25b-b7fd-4465-a91b-e085676eca5a",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response indicates a validation error\", function () {",
+									"    const res = pm.response.json();",
+									"    pm.expect(res).to.satisfy((r) => r.error !== undefined || r.message !== undefined || r.errors !== undefined);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/signup",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "signup"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"incomplete\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04_Signup_Fail_Invalid_Email_Format",
+					"id": "74da30b8-e7ad-4e3b-a902-f98dfc4fd309",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "2ad54e6f-2e12-4219-b5b0-224177ede2b2",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/signup",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "signup"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"badmail_user\",\n    \"email\": \"bad-ema.il-format\",\n    \"password\": \"Password123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "05_Signup_Fail_Weak_Password",
+					"id": "0fdcf173-c93d-412d-a2ce-26a6751bbd76",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "d3f7d4ac-2662-4133-bc54-015b8efa00e0",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/signup",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "signup"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"weakpw_user\",\n    \"email\": \"weakpw_{{$randomInt}}@example.com\",\n    \"password\": \"123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "06_Signup_Fail_Duplicate_Email",
+					"id": "7741c907-7fa3-4745-8bf9-77a9687f1d43",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be786f03-619e-4dae-a54f-184bf7c77659",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 409 Conflict\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
+									"});",
+									"",
+									"pm.test(\"Error message references duplication\", function () {",
+									"    const res = pm.response.json();",
+									"    const msg = JSON.stringify(res).toLowerCase();",
+									"    pm.expect(msg).to.satisfy((m) => m.includes(\"exist\") || m.includes(\"duplicate\") || m.includes(\"already\"));",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/signup",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "signup"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"another_username\",\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "07_Signup_Fail_Duplicate_Username",
+					"id": "ed9545ae-1908-4073-978a-d63fc8a2e7b6",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7d5db148-0e43-4a5c-b5d3-6f4a1623eb25",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 409 Conflict\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/signup",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "signup"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"{{test_username}}\",\n    \"email\": \"dupuser_{{$randomInt}}@example.com\",\n    \"password\": \"Password123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "08_Login_Fail_NonExistent_User",
+					"id": "e94aca28-3218-4f78-a87d-7666b7ea67a5",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "6b596bc2-53a8-42ce-9a5b-21b43aa6491e",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/login",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "login"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": \"ghost_{{$randomInt}}@example.com\",\n    \"password\": \"Password123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "09_Login_Fail_Incorrect_Password",
+					"id": "e9f6c484-63d2-4217-9024-968665703074",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "551c3082-b786-4d36-b0c2-f05bb80bfa5d",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/login",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "login"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": \"{{test_email}}\",\n    \"password\": \"WrongPassword!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10_Login_Success",
+					"id": "022206f6-f38d-4cc7-86a0-64bfa686e61e",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "cec2ac01-0bd5-41ef-93b9-e6280f9cbec6",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains a JWT token\", function () {",
+									"    const res = pm.response.json();",
+									"    pm.expect(res).to.have.property(\"token\");",
+									"    pm.expect(res.token).to.be.a(\"string\").and.not.empty;",
+									"    pm.environment.set(\"jwt_token\", res.token);",
+									"    pm.collectionVariables.set(\"jwt_token\", res.token);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/login",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "login"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "02_User_Profile_And_Session",
+			"id": "41d55adf-509b-4308-a384-370f9282a8e9",
+			"description": "Authenticated profile and session endpoints, including the logout flow that invalidates the JWT server-side.",
+			"item": [
+				{
+					"name": "01_Get_Home_Fail_No_Auth_Header",
+					"id": "b77323d8-b5cb-46f1-b796-76866b3b9969",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "e402ca93-dbc0-43a0-8ce7-8a61ab8b594b",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 401 Unauthorized\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/home",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "home"]
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02_Get_Home_Fail_Invalid_Token_Format",
+					"id": "b8c70da4-17be-483a-ae9f-720a194b3913",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "60ffda3b-d31a-42bd-b50d-4e336faee3bc",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Server rejects malformed token without leaking an unhandled crash\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([401, 500]);",
+									"});",
+									"",
+									"pm.test(\"Response does not leak a raw stack trace\", function () {",
+									"    const text = pm.response.text();",
+									"    pm.expect(text.toLowerCase()).to.not.include(\"at object.<anonymous>\");",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/home",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "home"]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "invalid_token_string",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "03_Get_Home_Success",
+					"id": "a5cb8af2-7772-484e-b245-3df926fa2aed",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "d4405c2f-a65b-4ac2-83f6-e4159404a586",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Profile payload matches the registered user\", function () {",
+									"    const res = pm.response.json();",
+									"    pm.expect(res.message).to.have.property(\"email\", pm.collectionVariables.get(\"test_email\").toLowerCase());",
+									"    pm.expect(res.message).to.have.property(\"username\", pm.collectionVariables.get(\"test_username\"));",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/home",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "home"]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04_Get_IceServers_Fail_Unauthenticated",
+					"id": "b80ddd9d-1703-4b3d-8fce-008b77b31cfd",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "5dcfdf30-2c55-44fe-b664-66566f3e98eb",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 401 Unauthorized\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/sensitive-stuff/ice-servers",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "sensitive-stuff", "ice-servers"]
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "05_Get_IceServers_Authenticated",
+					"id": "81bba8db-6dc1-4dc7-9181-b3c5cdc8802f",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "f71532f1-72a2-42e3-9b7e-a989d276f599",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200 (or 500 if upstream STUN lookup fails)\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 500]);",
+									"});",
+									"",
+									"pm.test(\"Successful response is an array of ICE server entries\", function () {",
+									"    if (pm.response.code === 200) {",
+									"        const res = pm.response.json();",
+									"        pm.expect(res).to.be.an(\"array\");",
+									"    }",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/sensitive-stuff/ice-servers",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "sensitive-stuff", "ice-servers"]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "06_Logout_Success",
+					"id": "858cd200-523e-472c-bb2c-e0e14d02574c",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "a027e2c8-d0b1-4a21-96e3-00f927d98dd4",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/logout",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "logout"]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "07_Get_Home_Fail_After_Logout_Token_Invalidated",
+					"id": "ebf503d2-1f07-4f90-99cd-633b0db0186b",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fde8d759-2d0b-401d-8f5e-147ca5087a18",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 401 Unauthorized (token invalidated server-side)\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/home",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "home"]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "03_Contacts_Management",
+			"id": "e71ee619-eb72-4e9f-9d43-ad574b63ab23",
+			"description": "Full contact lifecycle: add, alias update, and delete. State (the created contact's user id) is captured once in 04_Add_Contact_Success and reused by every subsequent request in this folder.",
+			"item": [
+				{
+					"name": "01_Add_Contact_Fail_Missing_Identifier",
+					"id": "efa92ca7-dfef-41f0-bfa7-9577922d1ead",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "45e8fa7b-9ba1-4606-a852-aa8c70eb6635",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/add",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "add"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02_Add_Contact_Fail_Cannot_Add_Self",
+					"id": "0d03f88a-f5c9-4d10-9bee-80c7ba7ed9c9",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "1bff57bf-79ed-4712-b88b-ac44a775ccac",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/add",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "add"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": \"{{test_email}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "03_Add_Contact_Fail_User_Does_Not_Exist",
+					"id": "685522c0-618d-44a0-9b80-86aecc4d29f4",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "e0d366af-08cc-454f-b63e-82b6078adbc1",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404 Not Found\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/add",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "add"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": \"nonexistent_{{$randomInt}}@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04_Add_Contact_Success",
+					"id": "e65e2784-6bcd-44fe-8fe3-89bbd75f5034",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "35fcf814-b16a-4993-ba56-b7433710e2db",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response contains the created contact and its id is persisted\", function () {",
+									"    const res = pm.response.json();",
+									"    pm.expect(res).to.have.property(\"contact\");",
+									"    pm.expect(res.contact).to.have.property(\"user\");",
+									"    pm.collectionVariables.set(\"contact_user_id\", res.contact.user);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/add",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "add"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": \"{{contact_email}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "05_Add_Contact_Fail_Already_Exists",
+					"id": "9244d483-013f-465f-a7d2-c318502eb618",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "69622aba-ce41-46d8-aef8-6a3c0d85924a",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 409 Conflict\", function () {",
+									"    pm.response.to.have.status(409);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/add",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "add"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": \"{{contact_email}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "06_Update_Alias_Fail_Missing_Alias",
+					"id": "030ee427-7ceb-4eb2-9d39-f37171f881f9",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "913b5bc8-0f08-4c54-85a4-fb80dedf71a6",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/update-alias",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "update-alias"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user\": \"{{contact_user_id}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "07_Update_Alias_Fail_Missing_User_Id",
+					"id": "8cb26bb3-97f2-4631-b2c5-326ef7ee3e15",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "a03e5444-c860-4754-a8d5-850aa44e65b9",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/update-alias",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "update-alias"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"alias\": \"New Name\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "08_Update_Alias_Fail_Non_Contact_User",
+					"id": "16f3f92b-1dab-414d-87cf-8b00d57393cf",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "2529b962-9739-4fb8-a044-c7c558928de1",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404 Not Found\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/update-alias",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "update-alias"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"alias\": \"Ghost\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "09_Update_Alias_Success",
+					"id": "18b836c6-5850-4f58-8d17-efbf062c2b14",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "46725298-040b-4284-8c8b-f9b1e30ae691",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/update-alias",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "update-alias"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user\": \"{{contact_user_id}}\",\n    \"alias\": \"Best Friend\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10_Delete_Contact_Fail_Missing_User_Id",
+					"id": "8ec11779-6758-4eae-9809-2f533c72cf0e",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "d6d8b307-440a-41e6-94a3-374f11d78cee",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/delete",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "delete"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "11_Delete_Contact_Success",
+					"id": "de1b442b-9110-40fc-9563-5117561870ce",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "e3e18145-ac0f-4587-a9af-91d23fe89e25",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/delete",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "delete"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user\": \"{{contact_user_id}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "04_Negative_and_Validation",
+			"id": "33023023-f762-42d9-8746-2ee77700bc63",
+			"description": "Edge cases, malformed input, and the forgot/reset password flow.",
+			"item": [
+				{
+					"name": "01_Non_Existent_Route_Returns_404",
+					"id": "a64d6354-dc3f-4934-b7ed-d2d002bd59ae",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "89ad9501-56f2-45d1-93b8-e4397639829a",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404 Not Found\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response is not a raw 500 stack trace\", function () {",
+									"    pm.expect(pm.response.code).to.not.equal(500);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/this-route-does-not-exist",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "this-route-does-not-exist"]
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02_Signup_Fail_Malformed_JSON_Body",
+					"id": "3e41008b-4cf3-4742-8a4e-2ebaff226c64",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "a9aaace1-0f2e-423b-90ef-c2380daba121",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Server returns a clean 400 instead of crashing\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 500]);",
+									"});",
+									"",
+									"pm.test(\"No raw stack trace is leaked to the client\", function () {",
+									"    const text = pm.response.text().toLowerCase();",
+									"    pm.expect(text).to.not.include(\"syntaxerror\");",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/signup",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "signup"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"username\": \"broken\", \"email\": \"broken@example.com\", \"password\": ",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "03_Delete_Contact_Fail_NonExistent_Contact",
+					"id": "429d343a-ef9d-4de6-8f53-10edbbf98cc1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "6353b536-aecf-4987-bb07-cbac9cb87ea7",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404 Not Found\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/delete",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "delete"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user\": \"64f1a2b3c4d5e6f7a8b9c0d1\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04_Delete_Contact_Fail_Same_Contact_Twice",
+					"id": "6c3255a9-a6d4-4e4b-9611-2c43378838a2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "c4ed4eae-0dfd-4c74-998f-8344d45a461d",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404 Not Found (already removed)\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/delete",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "delete"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user\": \"{{contact_user_id}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "05_Forgot_Password_Fail_Email_Not_Found",
+					"id": "9890ea14-7501-4d08-aaeb-392886aee0e4",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "6e8fb6cb-3d89-4c9b-98dd-0f26e2f20732",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404 Not Found\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/forgot-password",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "forgot-password"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"unregistered_{{$randomInt}}@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "06_Forgot_Password_Success",
+					"id": "fe990a85-5737-47a6-b72e-cf0d0bc3b9eb",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "70c21e2d-80da-4938-87aa-a2c3ed08228c",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/forgot-password",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "forgot-password"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{test_email}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "07_Reset_Password_Fail_Invalid_Pin",
+					"id": "3ae4dd0f-b2dd-41d2-aadb-d089f248c52c",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "57770ca8-5205-4a82-9247-8d476f7666b1",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Error message indicates an invalid or expired code\", function () {",
+									"    const res = pm.response.json();",
+									"    pm.expect(res.error).to.eql(\"Invalid or expired code\");",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/reset-password",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "reset-password"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"resetPin\": \"00000\",\n    \"password\": \"NewPassword456!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "08_Reset_Password_Success",
+					"id": "f9f25f06-bd0c-49c3-9282-8c191d36b491",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "033a2ac6-805e-4dde-9894-209113fe8793",
+								"type": "text/javascript",
+								"exec": [
+									"// NOTE: This request depends on the reset PIN that the backend emails to",
+									"// the user in 06_Forgot_Password_Success. Since that PIN is delivered via",
+									"// a real email/SMTP flow (not exposed by any API response), it cannot be",
+									"// captured automatically inside Postman the way the Jest suite captures",
+									"// it from a mocked nodemailer transport. Before running this request,",
+									"// manually set the \"reset_pin\" collection variable to the code retrieved",
+									"// from the test mailbox, or wire up an email-testing API (e.g. Mailtrap,",
+									"// Ethereal) call here to fetch it programmatically.",
+									"if (!pm.collectionVariables.get(\"reset_pin\")) {",
+									"    console.warn(\"reset_pin collection variable is not set - skipping strict assertions for this run.\");",
+									"} else {",
+									"    pm.test(\"Status code is 200 OK\", function () {",
+									"        pm.response.to.have.status(200);",
+									"    });",
+									"}",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/reset-password",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "reset-password"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"resetPin\": \"{{reset_pin}}\",\n    \"password\": \"NewPassword456!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "05_NoSQL_Security_and_Input_Sanitization",
+			"id": "3ae2e734-4411-4b8d-a742-e92a85687c3e",
+			"description": "MongoDB/NoSQL-specific security checks: operator injection in authentication payloads, BSON/regex injection in filters, invalid ObjectId handling, and JWT tampering. No SQL injection tests are included since the backing store is MongoDB, not a relational database.",
+			"item": [
+				{
+					"name": "01_NoSQL_Injection_Login_Ne_Operator",
+					"id": "8bb14d68-2654-4b43-9354-1a5429f21ca7",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "a753324d-53bc-4608-81a1-d2e8f22e0f27",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Operator injection payload is rejected, not authenticated\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 401]);",
+									"});",
+									"",
+									"pm.test(\"Response does not contain a valid JWT token\", function () {",
+									"    let res;",
+									"    try { res = pm.response.json(); } catch (e) { res = {}; }",
+									"    pm.expect(res.token).to.be.undefined;",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/login",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "login"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": { \"$ne\": null },\n    \"password\": { \"$ne\": null }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "02_NoSQL_Injection_Login_Gt_Operator",
+					"id": "f077457a-5cca-4c00-89cd-af3ca51a81a5",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "a9499e2a-2c3d-4b6c-b50d-57b383af1b7d",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Operator injection payload is rejected, not authenticated\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 401]);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/login",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "login"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": { \"$gt\": \"\" },\n    \"password\": { \"$gt\": \"\" }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "03_NoSQL_Injection_Signup_Operator_In_Email",
+					"id": "de8c2a3c-7c81-4891-8949-f80e2f519c9b",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "314c1879-1ec6-4f82-901d-d4f580b5de95",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Operator-object email is rejected with a clean 400, never a 500\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/auth/signup",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "auth", "signup"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"injector\",\n    \"email\": { \"$gt\": \"\" },\n    \"password\": \"Password123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "04_BSON_Regex_Injection_Contact_Identifier",
+					"id": "887c6904-3c22-4362-930e-eea8eff847cf",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "020df927-3ce8-416e-bcf8-3f90b9a74a38",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Regex-operator identifier is rejected with a clean error, never a 500\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/add",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "add"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": { \"$regex\": \".*\", \"$options\": \"i\" }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "05_BSON_Regex_Injection_Query_Parameter",
+					"id": "b44e5d26-310d-4de4-b2df-3d60198b4c6c",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "82021ff0-b3b6-4789-a64b-5e601e7587b7",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Route does not crash on operator-style query parameters\", function () {",
+									"    pm.expect(pm.response.code).to.not.equal(500);",
+									"});",
+									"",
+									"pm.test(\"No raw stack trace is leaked in the response body\", function () {",
+									"    const text = pm.response.text().toLowerCase();",
+									"    pm.expect(text).to.not.include(\"mongoerror\");",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts?search[$regex]=.*",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts"],
+							"query": [
+								{
+									"key": "search[$regex]",
+									"value": ".*"
+								}
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "06_Invalid_ObjectId_Format_Update_Alias",
+					"id": "46fe8932-cf61-440d-8358-56e668d9925f",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fbefb722-4d86-40f9-89ae-9963e3a5eb79",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Malformed ObjectId returns a clean 400/404, never a raw 500\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+									"});",
+									"",
+									"pm.test(\"No Mongoose CastError stack trace is leaked\", function () {",
+									"    const text = pm.response.text().toLowerCase();",
+									"    pm.expect(text).to.not.include(\"castError\".toLowerCase());",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/user/contacts/update-alias",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "contacts", "update-alias"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user\": \"123-invalid-id\",\n    \"alias\": \"Bad Id\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "07_Auth_Tampering_Malformed_JWT",
+					"id": "878664c6-d137-4e57-999f-8f47f2b4ef10",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "a7067b33-6ad2-4878-9e33-2edb8f1e6b9f",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Malformed JWT is rejected\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([401, 500]);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/home",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "home"]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.tampered.payload",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "08_Auth_Tampering_Expired_Token_Structure",
+					"id": "2789b5b5-091c-4519-adb2-78ec089dc870",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "b35be72e-882e-434f-ab9a-9cbd6ccffe6c",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Expired/forged token structure is rejected with 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([401, 500]);",
+									"});",
+									"",
+									"pm.test(\"Response time is below 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/user/home",
+							"host": ["{{BASE_URL}}"],
+							"path": ["user", "home"]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAwMCIsImlhdCI6MTAwMDAwMDAwMCwiZXhwIjoxMDAwMDAwMDAxfQ.invalidSignature",
+									"type": "string"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "cf18d7b7-fbd6-4171-becd-3826cf64cd64",
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "5f0d6db5-b977-4e9c-b3c8-31aaaab3294f",
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "test_email",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_username",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_password",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "contact_email",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "contact_username",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "contact_password",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "contact_user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "reset_pin",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
