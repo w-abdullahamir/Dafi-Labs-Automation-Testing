@@ -35,12 +35,12 @@ project-root/
 
 - Node.js installed
 - Chrome browser installed
-- `npm install` run from the `selenium` folder
+- `npm ci` run from the `selenium` folder
 
 ## Installation
 
 ```bash
-npm install
+npm ci
 ```
 
 ## Run the test

@@ -29,7 +29,7 @@ The tests validate that the portfolio website:
 From the `playwright/` folder, run:
 
 ```bash
-npm install
+npm ci
 npx playwright test
 ```
 
